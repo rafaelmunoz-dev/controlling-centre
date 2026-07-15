@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: cc-postgres
+    environment:
+      POSTGRES_USER: cc
+      POSTGRES_PASSWORD: cc_dev_password
+      POSTGRES_DB: controlling_centre
+    ports:
+      - "5433:5432"
+    volumes:
+      - cc_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  cc_postgres_data:
+    name: controlling-centre_postgres_data
+    
