@@ -15,6 +15,11 @@ prototipo anterior.
 El diagrama de arquitectura (Excalidraw) vive en `docs/diagrams/`. La
 carpeta está vacía por ahora — se añadirá al exportar el diagrama.
 
+## Convención Clockodo
+
+Registros no facturables de clientes externos deben incluir en la
+descripción: razón y quien aprobó.
+
 ## Decisiones clave
 
 - [0001 — Reconstruir desde cero, no evolucionar](decisions/0001-rebuild-not-evolve.md)
