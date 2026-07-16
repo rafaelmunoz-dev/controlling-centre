@@ -21,14 +21,14 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-16">
       <p className="text-sm text-red-600">
-        Login temporal de desarrollo — no usar en producción.
+        Temporary developer login — do not use in production.
       </p>
       <form action={loginAsDeveloper}>
         <button
           type="submit"
           className="rounded bg-black px-4 py-2 text-white"
         >
-          Entrar como desarrollador (temporal)
+          Sign in as developer (temporary)
         </button>
       </form>
     </div>

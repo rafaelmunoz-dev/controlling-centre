@@ -15,6 +15,13 @@
       "when": 1784127488667,
       "tag": "0001_cloudy_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784188740274,
+      "tag": "0002_flowery_zodiak",
+      "breakpoints": true
     }
   ]
 }
