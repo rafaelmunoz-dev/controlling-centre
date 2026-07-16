@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { timeEntries, employees, budgets, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
 import { formatAmount, formatHours } from "@/lib/format";
-import { currentMonthRange } from "@/lib/date-range";
+import { parsePeriod } from "@/lib/period";
 import {
   Card,
   CardContent,
@@ -16,10 +16,12 @@ import {
 export default async function DashboardHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string }>;
+  searchParams: Promise<{ scope?: string; period?: string }>;
 }) {
-  const scope = (await searchParams).scope ?? "all";
-  const { start, end } = currentMonthRange();
+  const { scope: scopeParam, period: periodParam } = await searchParams;
+  const scope = scopeParam ?? "all";
+  const period = parsePeriod({ period: periodParam });
+  const { startDate: start, endDate: end } = period;
 
   const entityRows = await db
     .select({ id: entities.id, groupParentId: entities.groupParentId })
@@ -59,11 +61,14 @@ export default async function DashboardHomePage({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link href={`/dashboard/productividad?scope=${scope}`} className="block h-full">
+      <Link
+        href={`/dashboard/productividad?scope=${scope}&period=${period.value}`}
+        className="block h-full"
+      >
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Productivity</CardTitle>
-            <CardDescription>Hours logged this month</CardDescription>
+            <CardDescription>Hours logged in {period.label}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-foreground">
@@ -77,7 +82,7 @@ export default async function DashboardHomePage({
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Budget</CardTitle>
-            <CardDescription>Total loaded this month</CardDescription>
+            <CardDescription>Total loaded for {period.label}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-foreground">
@@ -87,7 +92,10 @@ export default async function DashboardHomePage({
         </Card>
       </Link>
 
-      <Link href={`/dashboard/pl?scope=${scope}`} className="block h-full">
+      <Link
+        href={`/dashboard/pl?scope=${scope}&period=${period.value}`}
+        className="block h-full"
+      >
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>P&L</CardTitle>
@@ -99,7 +107,10 @@ export default async function DashboardHomePage({
         </Card>
       </Link>
 
-      <Link href={`/dashboard/cash-flow?scope=${scope}`} className="block h-full">
+      <Link
+        href={`/dashboard/cash-flow?scope=${scope}&period=${period.value}`}
+        className="block h-full"
+      >
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Cash Flow</CardTitle>
@@ -111,7 +122,10 @@ export default async function DashboardHomePage({
         </Card>
       </Link>
 
-      <Link href={`/dashboard/budget-vs-actual?scope=${scope}`} className="block h-full">
+      <Link
+        href={`/dashboard/budget-vs-actual?scope=${scope}&period=${period.value}`}
+        className="block h-full"
+      >
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Budget vs Actual</CardTitle>
@@ -123,7 +137,10 @@ export default async function DashboardHomePage({
         </Card>
       </Link>
 
-      <Link href={`/dashboard/pipeline?scope=${scope}`} className="block h-full">
+      <Link
+        href={`/dashboard/pipeline?scope=${scope}&period=${period.value}`}
+        className="block h-full"
+      >
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Pipeline (basic)</CardTitle>

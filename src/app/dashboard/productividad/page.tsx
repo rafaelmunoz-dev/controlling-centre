@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { timeEntries, employees, clients, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
-import { currentMonthRange } from "@/lib/date-range";
+import { parsePeriod } from "@/lib/period";
 import { formatHours, formatPercent } from "@/lib/format";
 import {
   Card,
@@ -34,6 +34,7 @@ export default async function ProductividadPage({
 }: {
   searchParams: Promise<{
     scope?: string;
+    period?: string;
     tab?: string;
     employee?: string;
     client?: string;
@@ -43,6 +44,7 @@ export default async function ProductividadPage({
 }) {
   const {
     scope: scopeParam,
+    period: periodParam,
     tab: tabParam,
     employee: employeeParam,
     client: clientParam,
@@ -51,7 +53,8 @@ export default async function ProductividadPage({
   } = await searchParams;
   const scope = scopeParam ?? "all";
   const tab = tabParam ?? "overview";
-  const { start, end } = currentMonthRange();
+  const period = parsePeriod({ period: periodParam });
+  const { startDate: start, endDate: end } = period;
 
   const entityRows = await db
     .select({ id: entities.id, name: entities.name, groupParentId: entities.groupParentId })
@@ -120,7 +123,7 @@ export default async function ProductividadPage({
         <Card>
           <CardHeader>
             <CardTitle>Total hours</CardTitle>
-            <CardDescription>This month</CardDescription>
+            <CardDescription>{period.label}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-foreground">
@@ -132,7 +135,7 @@ export default async function ProductividadPage({
         <Card>
           <CardHeader>
             <CardTitle>Billable</CardTitle>
-            <CardDescription>Share of hours this month</CardDescription>
+            <CardDescription>Share of hours in {period.label}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-foreground">
@@ -147,7 +150,7 @@ export default async function ProductividadPage({
         <Card>
           <CardHeader>
             <CardTitle>Active employees</CardTitle>
-            <CardDescription>With at least one record this month</CardDescription>
+            <CardDescription>With at least one record in {period.label}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-foreground">
@@ -159,7 +162,7 @@ export default async function ProductividadPage({
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-foreground">
-          Top clients by hours
+          Top clients by hours ({period.label})
         </h2>
         <table className="w-full border-collapse border border-border text-sm">
           <thead>
@@ -193,7 +196,7 @@ export default async function ProductividadPage({
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-foreground">
-          Top employees by hours
+          Top employees by hours ({period.label})
         </h2>
         <table className="w-full border-collapse border border-border text-sm">
           <thead>
@@ -297,7 +300,7 @@ export default async function ProductividadPage({
           <Card>
             <CardHeader>
               <CardTitle>Total hours</CardTitle>
-              <CardDescription>This month</CardDescription>
+              <CardDescription>{period.label}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-foreground">
@@ -437,6 +440,7 @@ export default async function ProductividadPage({
             : "desc";
     const params = new URLSearchParams();
     params.set("scope", scope);
+    params.set("period", period.value);
     params.set("tab", "by-client");
     params.set("clientSort", column);
     params.set("clientDir", nextDir);
@@ -520,7 +524,7 @@ export default async function ProductividadPage({
     byClient = (
       <div className="flex flex-col gap-6 pt-4">
         <Link
-          href={`/dashboard/productividad?scope=${scope}&tab=by-client`}
+          href={`/dashboard/productividad?scope=${scope}&period=${period.value}&tab=by-client`}
           className="w-fit text-sm text-primary underline"
         >
           ← Back to all clients
@@ -530,7 +534,7 @@ export default async function ProductividadPage({
           <Card>
             <CardHeader>
               <CardTitle>{selectedClientRow.name}</CardTitle>
-              <CardDescription>This month</CardDescription>
+              <CardDescription>{period.label}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-foreground">
@@ -542,7 +546,7 @@ export default async function ProductividadPage({
           <Card>
             <CardHeader>
               <CardTitle>Billable</CardTitle>
-              <CardDescription>Share of hours this month</CardDescription>
+              <CardDescription>Share of hours in {period.label}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-foreground">
@@ -614,7 +618,7 @@ export default async function ProductividadPage({
               const total = Number(row.totalHours);
               const pct = total > 0 ? (Number(row.billableHours) / total) * 100 : 0;
               const href = row.clientId
-                ? `/dashboard/productividad?scope=${scope}&tab=by-client&client=${row.clientId}`
+                ? `/dashboard/productividad?scope=${scope}&period=${period.value}&tab=by-client&client=${row.clientId}`
                 : null;
               return (
                 <tr key={row.clientId ?? "no-client"} className="hover:bg-muted">

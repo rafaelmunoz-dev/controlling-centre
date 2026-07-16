@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar";
 import { EntityScopeSelector } from "@/components/entity-scope-selector";
+import { PeriodSelector } from "@/components/period-selector";
 import { logout } from "./actions";
 
 export default function DashboardLayout({
@@ -20,6 +21,9 @@ export default function DashboardLayout({
           <Separator orientation="vertical" className="h-6" />
           <Suspense fallback={<div className="w-64" />}>
             <EntityScopeSelector />
+          </Suspense>
+          <Suspense fallback={<div className="w-48" />}>
+            <PeriodSelector />
           </Suspense>
           <div className="flex-1" />
           <form action={logout}>
