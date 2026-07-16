@@ -3,7 +3,8 @@ import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { timeEntries, employees, budgets, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
-import { formatAmount } from "@/lib/format";
+import { formatAmount, formatHours } from "@/lib/format";
+import { currentMonthRange } from "@/lib/date-range";
 import {
   Card,
   CardContent,
@@ -11,19 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-function currentMonthRange() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  const start = `${year}-${pad(month + 1)}-01`;
-  const nextMonth = month === 11 ? { y: year + 1, m: 1 } : { y: year, m: month + 2 };
-  const end = `${nextMonth.y}-${pad(nextMonth.m)}-01`;
-
-  return { start, end };
-}
 
 export default async function DashboardHomePage({
   searchParams,
@@ -66,79 +54,88 @@ export default async function DashboardHomePage({
     budgetQuery,
   ]);
 
+  const cardClassName =
+    "flex h-48 flex-col justify-between cursor-pointer transition-all hover:shadow-md hover:border-primary/50";
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Card>
-        <CardHeader>
-          <CardTitle>Productivity</CardTitle>
-          <CardDescription>Hours logged this month</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-semibold text-foreground">
-            {Number(totalHours).toFixed(2)} h
-          </p>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/productividad?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>Productivity</CardTitle>
+            <CardDescription>Hours logged this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-foreground">
+              {formatHours(totalHours)} h
+            </p>
+          </CardContent>
+        </Card>
+      </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget</CardTitle>
-          <CardDescription>Total loaded this month</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <p className="text-3xl font-semibold text-foreground">
-            {formatAmount(totalBudget)} €
-          </p>
-          <Link
-            href="/dashboard/presupuesto"
-            className="text-sm text-primary underline"
-          >
-            Load budget
-          </Link>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/presupuesto?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>Budget</CardTitle>
+            <CardDescription>Total loaded this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-foreground">
+              {formatAmount(totalBudget)} €
+            </p>
+          </CardContent>
+        </Card>
+      </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>P&L</CardTitle>
-          <CardDescription>Waiting on external system connection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No data yet.</p>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/pl?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>P&L</CardTitle>
+            <CardDescription>Waiting on external system connection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
+          </CardContent>
+        </Card>
+      </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cash Flow</CardTitle>
-          <CardDescription>Waiting on external system connection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No data yet.</p>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/cash-flow?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>Cash Flow</CardTitle>
+            <CardDescription>Waiting on external system connection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
+          </CardContent>
+        </Card>
+      </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget vs Actual</CardTitle>
-          <CardDescription>Waiting on external system connection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No data yet.</p>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/budget-vs-actual?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>Budget vs Actual</CardTitle>
+            <CardDescription>Waiting on external system connection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
+          </CardContent>
+        </Card>
+      </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipeline (basic)</CardTitle>
-          <CardDescription>Coming soon</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Coming soon — activates once the CRM is ready.
-          </p>
-        </CardContent>
-      </Card>
+      <Link href={`/dashboard/pipeline?scope=${scope}`} className="block h-full">
+        <Card className={cardClassName}>
+          <CardHeader>
+            <CardTitle>Pipeline (basic)</CardTitle>
+            <CardDescription>Coming soon</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Coming soon — activates once the CRM is ready.
+            </p>
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   );
 }
