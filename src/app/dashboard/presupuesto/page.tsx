@@ -1,24 +1,26 @@
+import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { budgets, entities } from "@/db/schema";
 import { filterEntitiesByScope, resolveScopeEntityIds } from "@/lib/entity-tree";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { saveBudget } from "./actions";
+import { formatAmount } from "@/lib/format";
+import { BudgetForm } from "./budget-form";
+import { DeleteBudgetForm } from "./delete-budget-form";
+import { saveBudget, deleteBudget } from "./actions";
 
 const PL_LINE_LABELS: Record<string, string> = {
   revenue: "Revenue",
-  direct_cost: "Direct cost",
-  indirect_cost: "Indirect cost",
+  direct_cost: "Direct Costs",
+  indirect_cost: "Indirect Costs",
 };
 
 export default async function PresupuestoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string }>;
+  searchParams: Promise<{ scope?: string; edit?: string }>;
 }) {
-  const scope = (await searchParams).scope ?? "all";
+  const { scope: scopeParam, edit } = await searchParams;
+  const scope = scopeParam ?? "all";
 
   const entityRows = await db
     .select({
@@ -33,6 +35,8 @@ export default async function PresupuestoPage({
 
   const existingQuery = db
     .select({
+      id: budgets.id,
+      entityId: budgets.entityId,
       entityName: entities.name,
       month: budgets.month,
       plLine: budgets.plLine,
@@ -46,75 +50,52 @@ export default async function PresupuestoPage({
     : existingQuery
   ).orderBy(desc(budgets.month));
 
+  let editEntityId: string | null = null;
+  let editMonth: string | null = null;
+  if (edit) {
+    const [entityId, month] = edit.split(":");
+    editEntityId = entityId ?? null;
+    editMonth = month ?? null;
+  }
+
+  const initialValues = {
+    entityId: editEntityId ?? scopedEntities[0]?.id ?? "",
+    month: editMonth ?? "",
+    revenue: "0",
+    direct_cost: "0",
+    indirect_cost: "0",
+  };
+
+  if (editEntityId && editMonth) {
+    for (const row of existing) {
+      if (
+        row.entityId === editEntityId &&
+        row.month.slice(0, 7) === editMonth &&
+        row.plLine in PL_LINE_LABELS
+      ) {
+        (initialValues as Record<string, string>)[row.plLine] = row.amount;
+      }
+    }
+  }
+
+  const boundSaveBudget = saveBudget.bind(
+    null,
+    scopedEntities.map((entity) => entity.id)
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="mb-4 text-xl font-semibold text-foreground">
-          Load budget
+          {editEntityId ? "Edit budget" : "Load budget"}
         </h1>
 
-        <form action={saveBudget} className="flex flex-col gap-4 max-w-md">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="entityId">Entity</Label>
-            <select
-              id="entityId"
-              name="entityId"
-              required
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
-            >
-              {scopedEntities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="month">Month</Label>
-            <Input id="month" name="month" type="month" required />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="revenue">Revenue</Label>
-            <Input
-              id="revenue"
-              name="revenue"
-              type="number"
-              step="0.01"
-              defaultValue="0"
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="direct_cost">Direct cost</Label>
-            <Input
-              id="direct_cost"
-              name="direct_cost"
-              type="number"
-              step="0.01"
-              defaultValue="0"
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="indirect_cost">Indirect cost</Label>
-            <Input
-              id="indirect_cost"
-              name="indirect_cost"
-              type="number"
-              step="0.01"
-              defaultValue="0"
-              required
-            />
-          </div>
-
-          <Button type="submit" className="w-fit">
-            Save budget
-          </Button>
-        </form>
+        <BudgetForm
+          key={edit ?? "new"}
+          action={boundSaveBudget}
+          scopedEntities={scopedEntities}
+          initialValues={initialValues}
+        />
       </div>
 
       <div>
@@ -133,14 +114,17 @@ export default async function PresupuestoPage({
               <th className="border border-border px-2 py-1 text-left">
                 Line
               </th>
-              <th className="border border-border px-2 py-1 text-left">
+              <th className="border border-border px-2 py-1 text-right">
                 Amount
+              </th>
+              <th className="border border-border px-2 py-1 text-left">
+                Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {existing.map((row, i) => (
-              <tr key={i}>
+            {existing.map((row) => (
+              <tr key={row.id}>
                 <td className="border border-border px-2 py-1">
                   {row.entityName ?? "—"}
                 </td>
@@ -150,8 +134,19 @@ export default async function PresupuestoPage({
                 <td className="border border-border px-2 py-1">
                   {PL_LINE_LABELS[row.plLine] ?? row.plLine}
                 </td>
+                <td className="border border-border px-2 py-1 text-right">
+                  {formatAmount(row.amount)}
+                </td>
                 <td className="border border-border px-2 py-1">
-                  {row.amount}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/presupuesto?scope=${scope}&edit=${row.entityId}:${row.month.slice(0, 7)}`}
+                      className="text-sm text-primary underline"
+                    >
+                      Edit
+                    </Link>
+                    <DeleteBudgetForm id={row.id} action={deleteBudget} />
+                  </div>
                 </td>
               </tr>
             ))}

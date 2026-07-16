@@ -3,6 +3,7 @@ import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { timeEntries, employees, budgets, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
+import { formatAmount } from "@/lib/format";
 import {
   Card,
   CardContent,
@@ -86,7 +87,7 @@ export default async function DashboardHomePage({
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <p className="text-3xl font-semibold text-foreground">
-            {Number(totalBudget).toFixed(2)} €
+            {formatAmount(totalBudget)} €
           </p>
           <Link
             href="/dashboard/presupuesto"
