@@ -1,17 +1,10 @@
-import Link from "next/link";
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { timeEntries, employees, budgets, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
-import { formatAmount, formatHours } from "@/lib/format";
+import { formatAmount, formatHours, formatCurrency } from "@/lib/format";
 import { parsePeriod } from "@/lib/period";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 
 export default async function DashboardHomePage({
   searchParams,
@@ -56,118 +49,89 @@ export default async function DashboardHomePage({
     .from(employees)
     .where(scopedIds ? inArray(employees.entityId, scopedIds) : sql`true`);
 
-  const [[{ total: totalHours }], [{ total: totalBudget }], [{ count: employeeCount }]] =
-    await Promise.all([hoursQuery, budgetQuery, employeeCountQuery]);
+  const revenueQuery = db
+    .select({
+      total: sql<string>`coalesce(sum(${timeEntries.hours} * coalesce(${timeEntries.hourlyRate}, 0)), 0)`,
+    })
+    .from(timeEntries)
+    .leftJoin(employees, eq(timeEntries.employeeId, employees.id))
+    .where(
+      scopedIds
+        ? and(
+            gte(timeEntries.date, start),
+            lt(timeEntries.date, end),
+            eq(timeEntries.billable, true),
+            inArray(employees.entityId, scopedIds)
+          )
+        : and(
+            gte(timeEntries.date, start),
+            lt(timeEntries.date, end),
+            eq(timeEntries.billable, true)
+          )
+    );
+
+  const [
+    [{ total: totalHours }],
+    [{ total: totalBudget }],
+    [{ count: employeeCount }],
+    [{ total: totalRevenue }],
+  ] = await Promise.all([hoursQuery, budgetQuery, employeeCountQuery, revenueQuery]);
 
   const hasNoClockodoData = employeeCount === 0 || Number(totalHours) === 0;
 
-  const cardClassName =
-    "flex h-48 flex-col justify-between cursor-pointer transition-all hover:shadow-md hover:border-primary/50";
-
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link
+      <KpiCard
+        title="Productivity"
+        subtitle={
+          hasNoClockodoData ? "No time-tracking data" : `Hours logged in ${period.label}`
+        }
         href={`/dashboard/productividad?scope=${scope}&period=${period.value}`}
-        className="block h-full"
-      >
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>Productivity</CardTitle>
-            <CardDescription>
-              {hasNoClockodoData
-                ? "No time-tracking data"
-                : `Hours logged in ${period.label}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasNoClockodoData ? (
-              <p className="text-sm text-muted-foreground">
-                No time-tracking data — this entity doesn&apos;t use Clockodo yet.
-              </p>
-            ) : (
-              <p className="text-3xl font-semibold text-foreground">
-                {formatHours(totalHours)} h
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </Link>
+        emptyMessage={
+          hasNoClockodoData
+            ? "No time-tracking data — this entity doesn't use Clockodo yet."
+            : undefined
+        }
+        primaryValue={formatHours(totalHours)}
+        primaryUnit="h"
+        secondaryValue={formatCurrency(totalRevenue)}
+        secondaryLabel="tracked revenue (potential)"
+      />
 
-      <Link href={`/dashboard/presupuesto?scope=${scope}`} className="block h-full">
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>Budget</CardTitle>
-            <CardDescription>Total loaded for {period.label}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-foreground">
-              {formatAmount(totalBudget)} €
-            </p>
-          </CardContent>
-        </Card>
-      </Link>
+      <KpiCard
+        title="Budget"
+        subtitle={`Total loaded for ${period.label}`}
+        href={`/dashboard/presupuesto?scope=${scope}`}
+        primaryValue={`${formatAmount(totalBudget)} €`}
+      />
 
-      <Link
+      <KpiCard
+        title="P&L"
+        subtitle="Waiting on external system connection"
         href={`/dashboard/pl?scope=${scope}&period=${period.value}`}
-        className="block h-full"
-      >
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>P&L</CardTitle>
-            <CardDescription>Waiting on external system connection</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No data yet.</p>
-          </CardContent>
-        </Card>
-      </Link>
+        emptyMessage="No data yet."
+      />
 
-      <Link
+      <KpiCard
+        title="Cash Flow"
+        subtitle="Waiting on external system connection"
         href={`/dashboard/cash-flow?scope=${scope}&period=${period.value}`}
-        className="block h-full"
-      >
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>Cash Flow</CardTitle>
-            <CardDescription>Waiting on external system connection</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No data yet.</p>
-          </CardContent>
-        </Card>
-      </Link>
+        emptyMessage="No data yet."
+      />
 
-      <Link
+      <KpiCard
+        title="Budget vs Actual"
+        subtitle="Waiting on external system connection"
         href={`/dashboard/budget-vs-actual?scope=${scope}&period=${period.value}`}
-        className="block h-full"
-      >
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>Budget vs Actual</CardTitle>
-            <CardDescription>Waiting on external system connection</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No data yet.</p>
-          </CardContent>
-        </Card>
-      </Link>
+        emptyMessage="No data yet."
+      />
 
-      <Link
+      <KpiCard
+        title="Pipeline (basic)"
+        subtitle="Coming soon"
         href={`/dashboard/pipeline?scope=${scope}&period=${period.value}`}
-        className="block h-full"
-      >
-        <Card className={cardClassName}>
-          <CardHeader>
-            <CardTitle>Pipeline (basic)</CardTitle>
-            <CardDescription>Coming soon</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Coming soon — activates once the CRM is ready.
-            </p>
-          </CardContent>
-        </Card>
-      </Link>
+        emptyMessage="Coming soon — activates once the CRM is ready."
+      />
     </div>
   );
 }
