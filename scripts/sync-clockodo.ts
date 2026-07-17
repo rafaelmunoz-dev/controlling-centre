@@ -128,6 +128,8 @@ async function main() {
         clientId,
         date: entry.time_since.slice(0, 10),
         hours: (durationSeconds / 3600).toFixed(2),
+        hourlyRate:
+          entry.hourly_rate !== null ? entry.hourly_rate.toFixed(2) : null,
         billable: entry.billable === 1,
         project: entry.projects_id ? String(entry.projects_id) : null,
         // No hay evidencia de entries con type != 1 (absencia) en esta
@@ -152,6 +154,7 @@ async function main() {
             clientId: sql`excluded.client_id`,
             date: sql`excluded.date`,
             hours: sql`excluded.hours`,
+            hourlyRate: sql`excluded.hourly_rate`,
             billable: sql`excluded.billable`,
             project: sql`excluded.project`,
             absenceType: sql`excluded.absence_type`,

@@ -14,3 +14,12 @@ export function formatHours(value: number | string): string {
 export function formatPercent(value: number): string {
   return `${twoDecimalFormatter.format(value)}%`;
 }
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "EUR",
+});
+
+export function formatCurrency(value: number | string): string {
+  return currencyFormatter.format(Number(value));
+}

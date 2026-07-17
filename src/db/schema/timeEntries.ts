@@ -22,6 +22,7 @@ export const timeEntries = pgTable("time_entries", {
   clientId: uuid("client_id").references(() => clients.id),
   date: date("date").notNull(),
   hours: numeric("hours", { precision: 5, scale: 2 }).notNull(),
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
   billable: boolean("billable").notNull(),
   project: text("project"),
   absenceType: text("absence_type"),

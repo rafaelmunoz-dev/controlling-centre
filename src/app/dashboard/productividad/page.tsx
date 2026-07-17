@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { timeEntries, employees, clients, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
 import { parsePeriod } from "@/lib/period";
-import { formatHours, formatPercent } from "@/lib/format";
+import { formatHours, formatPercent, formatCurrency } from "@/lib/format";
 import {
   Card,
   CardContent,
@@ -69,6 +69,15 @@ export default async function ProductividadPage({
       )
     : and(gte(timeEntries.date, start), lt(timeEntries.date, end));
 
+  const employeesInScopeQuery = db
+    .select({ id: employees.id, name: employees.name, entityId: employees.entityId })
+    .from(employees);
+
+  const employeesInScope = await (scopedIds
+    ? employeesInScopeQuery.where(inArray(employees.entityId, scopedIds))
+    : employeesInScopeQuery
+  ).orderBy(employees.name);
+
   // --- Overview tab ---
   const billableSplitRows = await db
     .select({
@@ -81,6 +90,15 @@ export default async function ProductividadPage({
     .groupBy(timeEntries.billable);
 
   const { totalHours, billablePercent } = billablePercentOf(billableSplitRows);
+  const hasNoClockodoData = employeesInScope.length === 0 || totalHours === 0;
+
+  const [{ revenue: totalRevenue }] = await db
+    .select({
+      revenue: sql<string>`coalesce(sum(${timeEntries.hours} * coalesce(${timeEntries.hourlyRate}, 0)), 0)`,
+    })
+    .from(timeEntries)
+    .leftJoin(employees, eq(timeEntries.employeeId, employees.id))
+    .where(and(monthFilter, eq(timeEntries.billable, true)));
 
   const [{ count: activeEmployeeCount }] = await db
     .select({ count: sql<number>`count(distinct ${timeEntries.employeeId})::int` })
@@ -119,16 +137,44 @@ export default async function ProductividadPage({
 
   const overview = (
     <div className="flex flex-col gap-6 pt-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Total hours</CardTitle>
-            <CardDescription>{period.label}</CardDescription>
+            <CardDescription>
+              {hasNoClockodoData ? "No time-tracking data" : period.label}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold text-foreground">
-              {formatHours(totalHours)} h
-            </p>
+            {hasNoClockodoData ? (
+              <p className="text-sm text-muted-foreground">
+                No time-tracking data — this entity doesn&apos;t use Clockodo yet.
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold text-foreground">
+                {formatHours(totalHours)} h
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tracked Revenue (potential)</CardTitle>
+            <CardDescription>
+              {hasNoClockodoData ? "No time-tracking data" : `Billable, ${period.label}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hasNoClockodoData ? (
+              <p className="text-sm text-muted-foreground">
+                No time-tracking data — this entity doesn&apos;t use Clockodo yet.
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold text-foreground">
+                {formatCurrency(totalRevenue)}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -227,15 +273,6 @@ export default async function ProductividadPage({
   );
 
   // --- By employee tab ---
-  const employeesInScopeQuery = db
-    .select({ id: employees.id, name: employees.name, entityId: employees.entityId })
-    .from(employees);
-
-  const employeesInScope = await (scopedIds
-    ? employeesInScopeQuery.where(inArray(employees.entityId, scopedIds))
-    : employeesInScopeQuery
-  ).orderBy(employees.name);
-
   const selectedEmployee = employeeParam
     ? employeesInScope.find((e) => e.id === employeeParam) ?? null
     : null;
@@ -272,6 +309,7 @@ export default async function ProductividadPage({
         clientName: clients.name,
         totalHours: sql<string>`coalesce(sum(${timeEntries.hours}), 0)`,
         billableHours: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} else 0 end), 0)`,
+        revenue: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} * coalesce(${timeEntries.hourlyRate}, 0) else 0 end), 0)`,
       })
       .from(timeEntries)
       .leftJoin(clients, eq(timeEntries.clientId, clients.id))
@@ -347,6 +385,7 @@ export default async function ProductividadPage({
                 <th className="border border-border px-2 py-1 text-left">Client</th>
                 <th className="border border-border px-2 py-1 text-right">Hours</th>
                 <th className="border border-border px-2 py-1 text-right">Billable</th>
+                <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
               </tr>
             </thead>
             <tbody>
@@ -360,6 +399,9 @@ export default async function ProductividadPage({
                   </td>
                   <td className="border border-border px-2 py-1 text-right">
                     {formatHours(row.billableHours)}
+                  </td>
+                  <td className="border border-border px-2 py-1 text-right">
+                    {formatCurrency(row.revenue)}
                   </td>
                 </tr>
               ))}
@@ -379,7 +421,6 @@ export default async function ProductividadPage({
                 <th className="border border-border px-2 py-1 text-left">Date</th>
                 <th className="border border-border px-2 py-1 text-left">Hours</th>
                 <th className="border border-border px-2 py-1 text-left">Billable</th>
-                <th className="border border-border px-2 py-1 text-left">Project</th>
               </tr>
             </thead>
             <tbody>
@@ -395,9 +436,6 @@ export default async function ProductividadPage({
                   <td className="border border-border px-2 py-1">{row.hours}</td>
                   <td className="border border-border px-2 py-1">
                     {row.billable ? "Yes" : "No"}
-                  </td>
-                  <td className="border border-border px-2 py-1">
-                    {row.project ?? "—"}
                   </td>
                 </tr>
               ))}
@@ -458,6 +496,7 @@ export default async function ProductividadPage({
       clientName: clients.name,
       totalHours: sql<string>`coalesce(sum(${timeEntries.hours}), 0)`,
       billableHours: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} else 0 end), 0)`,
+      revenue: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} * coalesce(${timeEntries.hourlyRate}, 0) else 0 end), 0)`,
     })
     .from(timeEntries)
     .leftJoin(employees, eq(timeEntries.employeeId, employees.id))
@@ -514,6 +553,7 @@ export default async function ProductividadPage({
         employeeName: employees.name,
         totalHours: sql<string>`coalesce(sum(${timeEntries.hours}), 0)`,
         billableHours: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} else 0 end), 0)`,
+        revenue: sql<string>`coalesce(sum(case when ${timeEntries.billable} then ${timeEntries.hours} * coalesce(${timeEntries.hourlyRate}, 0) else 0 end), 0)`,
       })
       .from(timeEntries)
       .leftJoin(employees, eq(timeEntries.employeeId, employees.id))
@@ -569,6 +609,7 @@ export default async function ProductividadPage({
                 <th className="border border-border px-2 py-1 text-left">Employee</th>
                 <th className="border border-border px-2 py-1 text-right">Total hours</th>
                 <th className="border border-border px-2 py-1 text-right">Billable hours</th>
+                <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
               </tr>
             </thead>
             <tbody>
@@ -582,6 +623,9 @@ export default async function ProductividadPage({
                   </td>
                   <td className="border border-border px-2 py-1 text-right">
                     {formatHours(row.billableHours)}
+                  </td>
+                  <td className="border border-border px-2 py-1 text-right">
+                    {formatCurrency(row.revenue)}
                   </td>
                 </tr>
               ))}
@@ -611,6 +655,7 @@ export default async function ProductividadPage({
                   % Billable{clientSortIndicator("billable")}
                 </Link>
               </th>
+              <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
             </tr>
           </thead>
           <tbody>
@@ -649,6 +694,17 @@ export default async function ProductividadPage({
                       </Link>
                     ) : (
                       <span className="block px-2 py-1">{formatPercent(pct)}</span>
+                    )}
+                  </td>
+                  <td className="border border-border p-0 text-right">
+                    {href ? (
+                      <Link href={href} className="block px-2 py-1">
+                        {formatCurrency(row.revenue)}
+                      </Link>
+                    ) : (
+                      <span className="block px-2 py-1">
+                        {formatCurrency(row.revenue)}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -719,12 +775,20 @@ export default async function ProductividadPage({
   );
 
   return (
-    <ProductivityTabs
-      currentTab={tab}
-      overview={overview}
-      byEmployee={byEmployee}
-      byClient={byClient}
-      allRecords={allRecords}
-    />
+    <div className="flex flex-col gap-1">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Productivity</h1>
+        <p className="text-sm text-muted-foreground">
+          Time and billable value tracked via Clockodo.
+        </p>
+      </div>
+      <ProductivityTabs
+        currentTab={tab}
+        overview={overview}
+        byEmployee={byEmployee}
+        byClient={byClient}
+        allRecords={allRecords}
+      />
+    </div>
   );
 }

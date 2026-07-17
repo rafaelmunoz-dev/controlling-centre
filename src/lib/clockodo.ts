@@ -48,6 +48,7 @@ export type ClockodoEntry = {
   time_until: string | null;
   duration: number | null;
   type: number;
+  hourly_rate: number | null;
 };
 
 // /users y /customers ya migraron a v3.

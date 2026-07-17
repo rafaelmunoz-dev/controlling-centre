@@ -51,10 +51,15 @@ export default async function DashboardHomePage({
         : eq(budgets.month, start)
     );
 
-  const [[{ total: totalHours }], [{ total: totalBudget }]] = await Promise.all([
-    hoursQuery,
-    budgetQuery,
-  ]);
+  const employeeCountQuery = db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(employees)
+    .where(scopedIds ? inArray(employees.entityId, scopedIds) : sql`true`);
+
+  const [[{ total: totalHours }], [{ total: totalBudget }], [{ count: employeeCount }]] =
+    await Promise.all([hoursQuery, budgetQuery, employeeCountQuery]);
+
+  const hasNoClockodoData = employeeCount === 0 || Number(totalHours) === 0;
 
   const cardClassName =
     "flex h-48 flex-col justify-between cursor-pointer transition-all hover:shadow-md hover:border-primary/50";
@@ -68,12 +73,22 @@ export default async function DashboardHomePage({
         <Card className={cardClassName}>
           <CardHeader>
             <CardTitle>Productivity</CardTitle>
-            <CardDescription>Hours logged in {period.label}</CardDescription>
+            <CardDescription>
+              {hasNoClockodoData
+                ? "No time-tracking data"
+                : `Hours logged in ${period.label}`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold text-foreground">
-              {formatHours(totalHours)} h
-            </p>
+            {hasNoClockodoData ? (
+              <p className="text-sm text-muted-foreground">
+                No time-tracking data — this entity doesn&apos;t use Clockodo yet.
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold text-foreground">
+                {formatHours(totalHours)} h
+              </p>
+            )}
           </CardContent>
         </Card>
       </Link>
