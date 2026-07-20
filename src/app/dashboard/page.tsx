@@ -1,10 +1,21 @@
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { timeEntries, employees, budgets, entities } from "@/db/schema";
-import { resolveScopeEntityIds } from "@/lib/entity-tree";
+import { timeEntries, employees, budgets, entities, purchaseOrders, orderSuppliers } from "@/db/schema";
+import { resolveScopeEntityIds, resolveMiguPurchaseScope } from "@/lib/entity-tree";
 import { formatAmount, formatHours, formatCurrency } from "@/lib/format";
 import { parsePeriod } from "@/lib/period";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+
+function formatByCurrency(amount: number | string, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(Number(amount));
+  } catch {
+    return `${Number(amount).toFixed(2)} ${currency}`;
+  }
+}
 
 export default async function DashboardHomePage({
   searchParams,
@@ -17,9 +28,13 @@ export default async function DashboardHomePage({
   const { startDate: start, endDate: end } = period;
 
   const entityRows = await db
-    .select({ id: entities.id, groupParentId: entities.groupParentId })
+    .select({ id: entities.id, name: entities.name, groupParentId: entities.groupParentId })
     .from(entities);
   const scopedIds = resolveScopeEntityIds(scope, entityRows);
+  const { effectiveIds: miguEntityIds, hasMiguData } = resolveMiguPurchaseScope(
+    scope,
+    entityRows
+  );
 
   const hoursQuery = db
     .select({ total: sql<string>`coalesce(sum(${timeEntries.hours}), 0)` })
@@ -70,14 +85,41 @@ export default async function DashboardHomePage({
           )
     );
 
+  const purchasesByCurrencyQuery = hasMiguData
+    ? db
+        .select({
+          currency: orderSuppliers.currency,
+          total: sql<string>`coalesce(sum(${orderSuppliers.amount}), 0)`,
+        })
+        .from(orderSuppliers)
+        .innerJoin(purchaseOrders, eq(orderSuppliers.purchaseOrderId, purchaseOrders.id))
+        .where(
+          and(
+            gte(purchaseOrders.createdAt, new Date(start)),
+            lt(purchaseOrders.createdAt, new Date(end)),
+            inArray(purchaseOrders.entityId, miguEntityIds)
+          )
+        )
+        .groupBy(orderSuppliers.currency)
+    : Promise.resolve([] as { currency: string | null; total: string }[]);
+
   const [
     [{ total: totalHours }],
     [{ total: totalBudget }],
     [{ count: employeeCount }],
     [{ total: totalRevenue }],
-  ] = await Promise.all([hoursQuery, budgetQuery, employeeCountQuery, revenueQuery]);
+    purchasesByCurrency,
+  ] = await Promise.all([
+    hoursQuery,
+    budgetQuery,
+    employeeCountQuery,
+    revenueQuery,
+    purchasesByCurrencyQuery,
+  ]);
 
   const hasNoClockodoData = employeeCount === 0 || Number(totalHours) === 0;
+
+  const [firstPurchaseTotal, ...restPurchaseTotals] = purchasesByCurrency;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -103,6 +145,32 @@ export default async function DashboardHomePage({
         subtitle={`Total loaded for ${period.label}`}
         href={`/dashboard/presupuesto?scope=${scope}`}
         primaryValue={`${formatAmount(totalBudget)} €`}
+      />
+
+      <KpiCard
+        title="Purchases"
+        subtitle="Spend tracked via MiGu Compras"
+        href={`/dashboard/purchases?scope=${scope}&period=${period.value}`}
+        emptyMessage={
+          !hasMiguData
+            ? "This entity doesn't have a purchase order system yet — overall spending will be visible via P&L once DATEV is connected."
+            : !firstPurchaseTotal
+              ? `No orders in ${period.label}.`
+              : undefined
+        }
+        primaryValue={
+          firstPurchaseTotal
+            ? formatByCurrency(firstPurchaseTotal.total, firstPurchaseTotal.currency ?? "USD")
+            : undefined
+        }
+        secondaryValue={
+          restPurchaseTotals.length > 0
+            ? restPurchaseTotals
+                .map((row) => formatByCurrency(row.total, row.currency ?? "USD"))
+                .join(", ")
+            : undefined
+        }
+        secondaryLabel={restPurchaseTotals.length > 0 ? `${period.label}` : undefined}
       />
 
       <KpiCard

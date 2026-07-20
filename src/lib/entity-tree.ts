@@ -74,3 +74,26 @@ export function filterEntitiesByScope(
   const ids = new Set(resolveScopeEntityIds(scope, rows) ?? []);
   return rows.filter((row) => ids.has(row.id));
 }
+
+/**
+ * Resuelve qué entityIds de MIGU Group caen dentro del scope actual.
+ * hasMiguData = false -> el scope no toca ninguna entity de MIGU Group,
+ * mostrar el mensaje honesto de "sin sistema de compras" en vez de datos.
+ */
+export function resolveMiguPurchaseScope(
+  scope: string,
+  rows: EntityRow[]
+): { effectiveIds: string[]; hasMiguData: boolean } {
+  const miguGroup = rows.find((r) => r.name === "MIGU Group");
+  const miguGroupEntityIds = miguGroup
+    ? [miguGroup.id, ...rows.filter((r) => r.groupParentId === miguGroup.id).map((r) => r.id)]
+    : [];
+
+  if (scope === "all") {
+    return { effectiveIds: miguGroupEntityIds, hasMiguData: miguGroupEntityIds.length > 0 };
+  }
+
+  const scopedIds = [scope, ...rows.filter((r) => r.groupParentId === scope).map((r) => r.id)];
+  const intersection = scopedIds.filter((id) => miguGroupEntityIds.includes(id));
+  return { effectiveIds: intersection, hasMiguData: intersection.length > 0 };
+}

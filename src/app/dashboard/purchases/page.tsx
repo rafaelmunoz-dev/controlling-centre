@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { purchaseOrders, orderSuppliers, entities } from "@/db/schema";
 import { parsePeriod } from "@/lib/period";
+import { resolveMiguPurchaseScope } from "@/lib/entity-tree";
 import {
   Card,
   CardContent,
@@ -35,31 +36,9 @@ export default async function PurchasesPage({
     .select({ id: entities.id, name: entities.name, groupParentId: entities.groupParentId })
     .from(entities);
 
-  const miguGroup = entityRows.find((e) => e.name === "MIGU Group");
-  const miguGroupEntityIds = miguGroup
-    ? [
-        miguGroup.id,
-        ...entityRows.filter((e) => e.groupParentId === miguGroup.id).map((e) => e.id),
-      ]
-    : [];
+  const { effectiveIds, hasMiguData } = resolveMiguPurchaseScope(scope, entityRows);
 
-  let effectiveIds: string[] | null = null;
-  let hasNoMiguData = false;
-
-  if (scope === "all") {
-    effectiveIds = miguGroupEntityIds.length > 0 ? miguGroupEntityIds : [];
-    hasNoMiguData = miguGroupEntityIds.length === 0;
-  } else {
-    const scopedIds = [scope, ...entityRows.filter((e) => e.groupParentId === scope).map((e) => e.id)];
-    const intersection = scopedIds.filter((id) => miguGroupEntityIds.includes(id));
-    if (intersection.length === 0) {
-      hasNoMiguData = true;
-    } else {
-      effectiveIds = intersection;
-    }
-  }
-
-  if (hasNoMiguData) {
+  if (!hasMiguData) {
     return (
       <div className="flex flex-col gap-1">
         <div>
@@ -71,7 +50,8 @@ export default async function PurchasesPage({
         <Card className="mt-4">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              No purchase data — this entity doesn&apos;t use MiGu Compras.
+              This entity doesn&apos;t have a purchase order system yet — overall
+              spending will be visible via P&amp;L once DATEV is connected.
             </p>
           </CardContent>
         </Card>
@@ -82,7 +62,7 @@ export default async function PurchasesPage({
   const periodFilter = and(
     gte(purchaseOrders.createdAt, new Date(start)),
     lt(purchaseOrders.createdAt, new Date(end)),
-    inArray(purchaseOrders.entityId, effectiveIds!)
+    inArray(purchaseOrders.entityId, effectiveIds)
   );
 
   const orders = await db
