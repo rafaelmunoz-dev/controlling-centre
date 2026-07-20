@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/productividad", label: "Productivity" },
   { href: "/dashboard/presupuesto", label: "Budget" },
+  { href: "/dashboard/purchases", label: "Purchases" },
   { href: "/dashboard/pipeline", label: "Pipeline" },
 ];
 

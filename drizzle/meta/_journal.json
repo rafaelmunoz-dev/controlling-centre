@@ -29,6 +29,13 @@
       "when": 1784275073175,
       "tag": "0003_gray_johnny_blaze",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784552011964,
+      "tag": "0004_foamy_ben_urich",
+      "breakpoints": true
     }
   ]
 }

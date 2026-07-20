@@ -8,6 +8,7 @@ import { pgTable, uuid, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg
 export const entities = pgTable("entities", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  code: text("code").unique(),
   groupParentId: uuid("group_parent_id").references((): AnyPgColumn => entities.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
