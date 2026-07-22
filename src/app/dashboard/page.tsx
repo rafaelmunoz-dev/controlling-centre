@@ -1,7 +1,8 @@
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { db } from "@/db";
 import { timeEntries, employees, budgets, entities, purchaseOrders, orderSuppliers } from "@/db/schema";
-import { resolveScopeEntityIds, resolveMiguPurchaseScope } from "@/lib/entity-tree";
+import { resolveScopeEntityIds, resolveMiguPurchaseScope, isMiguGroupScope } from "@/lib/entity-tree";
 import { formatAmount, formatHours, formatCurrency } from "@/lib/format";
 import { parsePeriod } from "@/lib/period";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -35,6 +36,11 @@ export default async function DashboardHomePage({
     scope,
     entityRows
   );
+  const isMiguScope = isMiguGroupScope(scope, entityRows);
+
+  const cookieStore = await cookies();
+  const userName = cookieStore.get("cc_dev_name")?.value;
+  const greeting = userName ? `Welcome, ${decodeURIComponent(userName)}` : "Welcome back";
 
   const hoursQuery = db
     .select({ total: sql<string>`coalesce(sum(${timeEntries.hours}), 0)` })
@@ -122,7 +128,11 @@ export default async function DashboardHomePage({
   const [firstPurchaseTotal, ...restPurchaseTotals] = purchasesByCurrency;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-4">
+      {/* Login temporal — se reemplaza por el nombre real de Entra ID cuando este disponible. */}
+      <h1 className="text-xl font-semibold text-foreground">{greeting}</h1>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <KpiCard
         title="Productivity"
         subtitle={
@@ -149,7 +159,7 @@ export default async function DashboardHomePage({
 
       <KpiCard
         title="Purchases"
-        subtitle="Spend tracked via MiGu Compras"
+        subtitle="Spend tracked via MIGU Compras"
         href={`/dashboard/purchases?scope=${scope}&period=${period.value}`}
         emptyMessage={
           !hasMiguData
@@ -173,33 +183,43 @@ export default async function DashboardHomePage({
         secondaryLabel={restPurchaseTotals.length > 0 ? `${period.label}` : undefined}
       />
 
-      <KpiCard
-        title="P&L"
-        subtitle="Waiting on external system connection"
-        href={`/dashboard/pl?scope=${scope}&period=${period.value}`}
-        emptyMessage="No data yet."
-      />
+      {/*
+        P&L / Cash Flow / Budget vs Actual dependen de DATEV (solo aplica a
+        empresas alemanas del grupo) y Pipeline depende de un CRM que hoy no
+        existe. No tiene sentido mostrarlas para MIGU Group ni sus hijas.
+      */}
+      {!isMiguScope && (
+        <>
+          <KpiCard
+            title="P&L"
+            subtitle="Waiting on external system connection"
+            href={`/dashboard/pl?scope=${scope}&period=${period.value}`}
+            emptyMessage="No data yet."
+          />
 
-      <KpiCard
-        title="Cash Flow"
-        subtitle="Waiting on external system connection"
-        href={`/dashboard/cash-flow?scope=${scope}&period=${period.value}`}
-        emptyMessage="No data yet."
-      />
+          <KpiCard
+            title="Cash Flow"
+            subtitle="Waiting on external system connection"
+            href={`/dashboard/cash-flow?scope=${scope}&period=${period.value}`}
+            emptyMessage="No data yet."
+          />
 
-      <KpiCard
-        title="Budget vs Actual"
-        subtitle="Waiting on external system connection"
-        href={`/dashboard/budget-vs-actual?scope=${scope}&period=${period.value}`}
-        emptyMessage="No data yet."
-      />
+          <KpiCard
+            title="Budget vs Actual"
+            subtitle="Waiting on external system connection"
+            href={`/dashboard/budget-vs-actual?scope=${scope}&period=${period.value}`}
+            emptyMessage="No data yet."
+          />
 
-      <KpiCard
-        title="Pipeline (basic)"
-        subtitle="Coming soon"
-        href={`/dashboard/pipeline?scope=${scope}&period=${period.value}`}
-        emptyMessage="Coming soon — activates once the CRM is ready."
-      />
+          <KpiCard
+            title="Pipeline (basic)"
+            subtitle="Coming soon"
+            href={`/dashboard/pipeline?scope=${scope}&period=${period.value}`}
+            emptyMessage="Coming soon — activates once the CRM is ready."
+          />
+        </>
+      )}
+      </div>
     </div>
   );
 }

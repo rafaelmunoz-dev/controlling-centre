@@ -28,7 +28,7 @@ export function PeriodSelectorClient({
 
   return (
     <Select value={currentPeriod} onValueChange={handleChange}>
-      <SelectTrigger className="w-48">
+      <SelectTrigger className="max-w-40">
         <SelectValue placeholder="Select period">
           {(value: string | null) =>
             options.find((option) => option.value === value)?.label ??

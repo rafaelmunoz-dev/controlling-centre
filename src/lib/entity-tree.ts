@@ -30,7 +30,7 @@ export function buildEntityScopeOptions(rows: EntityRow[]): EntityOption[] {
   const groupParents = topLevel.filter((r) => childrenByParent.has(r.id));
 
   const options: EntityOption[] = [
-    { value: "all", label: "Andreas Akhtar (consolidated)", depth: 0 },
+    { value: "all", label: "Andreas Akhtar", depth: 0 },
   ];
 
   for (const entity of standalone) {
@@ -73,6 +73,19 @@ export function filterEntitiesByScope(
   if (scope === "all") return rows;
   const ids = new Set(resolveScopeEntityIds(scope, rows) ?? []);
   return rows.filter((row) => ids.has(row.id));
+}
+
+/**
+ * True si el scope actual ES MIGU Group o una de sus hijas directas.
+ * "all" (consolidado) devuelve false a propósito: el consolidado sigue
+ * mostrando el set completo de tarjetas del dashboard.
+ */
+export function isMiguGroupScope(scope: string, rows: EntityRow[]): boolean {
+  if (scope === "all") return false;
+  const miguGroup = rows.find((r) => r.name === "MIGU Group");
+  if (!miguGroup) return false;
+  if (scope === miguGroup.id) return true;
+  return rows.some((r) => r.id === scope && r.groupParentId === miguGroup.id);
 }
 
 /**

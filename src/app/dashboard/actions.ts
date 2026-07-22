@@ -6,5 +6,6 @@ import { redirect } from "next/navigation";
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete("cc_dev_session");
+  cookieStore.delete("cc_dev_name");
   redirect("/");
 }

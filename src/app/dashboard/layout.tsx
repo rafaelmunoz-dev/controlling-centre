@@ -1,38 +1,37 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/app-sidebar";
 import { EntityScopeSelector } from "@/components/entity-scope-selector";
 import { PeriodSelector } from "@/components/period-selector";
-import { logout } from "./actions";
+import { UserMenu } from "@/components/dashboard/user-menu";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const rawName = cookieStore.get("cc_dev_name")?.value;
+  const userName = rawName ? decodeURIComponent(rawName) : null;
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 items-center gap-4 border-b border-border px-4">
+        <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 md:h-16 md:py-0">
           <SidebarTrigger />
-          <Separator orientation="vertical" className="h-6" />
-          <Suspense fallback={<div className="w-64" />}>
+          <Suspense fallback={<div className="h-8 w-32 rounded-md bg-muted" />}>
             <EntityScopeSelector />
           </Suspense>
-          <Suspense fallback={<div className="w-48" />}>
+          <Suspense fallback={<div className="h-8 w-28 rounded-md bg-muted" />}>
             <PeriodSelector />
           </Suspense>
-          <div className="flex-1" />
-          <form action={logout}>
-            <Button type="submit" variant="outline">
-              Sign out
-            </Button>
-          </form>
+          <div className="ml-auto">
+            <UserMenu name={userName} />
+          </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 overflow-x-hidden p-4 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -5,6 +5,7 @@ import { timeEntries, employees, clients, entities } from "@/db/schema";
 import { resolveScopeEntityIds } from "@/lib/entity-tree";
 import { parsePeriod } from "@/lib/period";
 import { formatHours, formatPercent, formatCurrency } from "@/lib/format";
+import { PercentBadge } from "@/components/ui/percent-badge";
 import {
   Card,
   CardContent,
@@ -210,64 +211,68 @@ export default async function ProductividadPage({
         <h2 className="mb-2 text-lg font-semibold text-foreground">
           Top clients by hours ({period.label})
         </h2>
-        <table className="w-full border-collapse border border-border text-sm">
-          <thead>
-            <tr className="bg-muted">
-              <th className="border border-border px-2 py-1 text-left">Client</th>
-              <th className="border border-border px-2 py-1 text-right">Hours</th>
-              <th className="border border-border px-2 py-1 text-right">% Billable</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topClients.map((row) => {
-              const total = Number(row.totalHours);
-              const pct = total > 0 ? (Number(row.billableHours) / total) * 100 : 0;
-              return (
-                <tr key={row.clientId ?? "no-client"}>
-                  <td className="border border-border px-2 py-1">
-                    {row.clientName ?? "No client"}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatHours(row.totalHours)}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatPercent(pct)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">Client</th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Hours</th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">% Billable</th>
+              </tr>
+            </thead>
+            <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+              {topClients.map((row) => {
+                const total = Number(row.totalHours);
+                const pct = total > 0 ? (Number(row.billableHours) / total) * 100 : 0;
+                return (
+                  <tr key={row.clientId ?? "no-client"}>
+                    <td className="px-3 py-2">
+                      {row.clientName ?? "No client"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatHours(row.totalHours)}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <PercentBadge value={pct} label={formatPercent(pct)} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-foreground">
           Top employees by hours ({period.label})
         </h2>
-        <table className="w-full border-collapse border border-border text-sm">
-          <thead>
-            <tr className="bg-muted">
-              <th className="border border-border px-2 py-1 text-left">Employee</th>
-              <th className="border border-border px-2 py-1 text-right">Total hours</th>
-              <th className="border border-border px-2 py-1 text-right">Billable hours</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topEmployees.map((row) => (
-              <tr key={row.employeeId ?? "unknown"}>
-                <td className="border border-border px-2 py-1">
-                  {row.employeeName ?? "—"}
-                </td>
-                <td className="border border-border px-2 py-1 text-right">
-                  {formatHours(row.totalHours)}
-                </td>
-                <td className="border border-border px-2 py-1 text-right">
-                  {formatHours(row.billableHours)}
-                </td>
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">Employee</th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Total hours</th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Billable hours</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+              {topEmployees.map((row) => (
+                <tr key={row.employeeId ?? "unknown"}>
+                  <td className="px-3 py-2">
+                    {row.employeeName ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatHours(row.totalHours)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatHours(row.billableHours)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -379,68 +384,66 @@ export default async function ProductividadPage({
           <h2 className="mb-2 text-lg font-semibold text-foreground">
             Breakdown by client
           </h2>
-          <table className="w-full border-collapse border border-border text-sm">
-            <thead>
-              <tr className="bg-muted">
-                <th className="border border-border px-2 py-1 text-left">Client</th>
-                <th className="border border-border px-2 py-1 text-right">Hours</th>
-                <th className="border border-border px-2 py-1 text-right">Billable</th>
-                <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employeeClientBreakdown.map((row) => (
-                <tr key={row.clientId ?? "no-client"}>
-                  <td className="border border-border px-2 py-1">
-                    {row.clientName ?? "No client"}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatHours(row.totalHours)}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatHours(row.billableHours)}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatCurrency(row.revenue)}
-                  </td>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">Client</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Hours</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Billable</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Tracked Revenue (potential)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+                {employeeClientBreakdown.map((row) => (
+                  <tr key={row.clientId ?? "no-client"}>
+                    <td className="px-3 py-2">
+                      {row.clientName ?? "No client"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatHours(row.totalHours)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatHours(row.billableHours)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatCurrency(row.revenue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div>
           <h2 className="mb-2 text-lg font-semibold text-foreground">
             Detailed records
           </h2>
-          <table className="w-full border-collapse border border-border text-sm">
-            <thead>
-              <tr className="bg-muted">
-                <th className="border border-border px-2 py-1 text-left">Employee</th>
-                <th className="border border-border px-2 py-1 text-left">Client</th>
-                <th className="border border-border px-2 py-1 text-left">Date</th>
-                <th className="border border-border px-2 py-1 text-left">Hours</th>
-                <th className="border border-border px-2 py-1 text-left">Billable</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employeeDetailRows.map((row, i) => (
-                <tr key={i}>
-                  <td className="border border-border px-2 py-1">
-                    {row.employeeName ?? "—"}
-                  </td>
-                  <td className="border border-border px-2 py-1">
-                    {row.clientName ?? "—"}
-                  </td>
-                  <td className="border border-border px-2 py-1">{row.date}</td>
-                  <td className="border border-border px-2 py-1">{row.hours}</td>
-                  <td className="border border-border px-2 py-1">
-                    {row.billable ? "Yes" : "No"}
-                  </td>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="border-b border-border px-2 py-1 text-left">Employee</th>
+                  <th className="border-b border-border px-2 py-1 text-left">Client</th>
+                  <th className="border-b border-border px-2 py-1 text-left">Date</th>
+                  <th className="border-b border-border px-2 py-1 text-left">Hours</th>
+                  <th className="border-b border-border px-2 py-1 text-left">Billable</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {employeeDetailRows.map((row, i) => (
+                  <tr key={i}>
+                    <td className="px-2 py-1">{row.employeeName ?? "—"}</td>
+                    <td className="px-2 py-1">{row.clientName ?? "—"}</td>
+                    <td className="px-2 py-1">{row.date}</td>
+                    <td className="px-2 py-1">{row.hours}</td>
+                    <td className="px-2 py-1">{row.billable ? "Yes" : "No"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
@@ -603,115 +606,121 @@ export default async function ProductividadPage({
           <h2 className="mb-2 text-lg font-semibold text-foreground">
             Employees on this client
           </h2>
-          <table className="w-full border-collapse border border-border text-sm">
-            <thead>
-              <tr className="bg-muted">
-                <th className="border border-border px-2 py-1 text-left">Employee</th>
-                <th className="border border-border px-2 py-1 text-right">Total hours</th>
-                <th className="border border-border px-2 py-1 text-right">Billable hours</th>
-                <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientEmployeeBreakdown.map((row) => (
-                <tr key={row.employeeId ?? "unknown"}>
-                  <td className="border border-border px-2 py-1">
-                    {row.employeeName ?? "—"}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatHours(row.totalHours)}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatHours(row.billableHours)}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right">
-                    {formatCurrency(row.revenue)}
-                  </td>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">Employee</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Total hours</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Billable hours</th>
+                  <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Tracked Revenue (potential)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+                {clientEmployeeBreakdown.map((row) => (
+                  <tr key={row.employeeId ?? "unknown"}>
+                    <td className="px-3 py-2">
+                      {row.employeeName ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatHours(row.totalHours)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatHours(row.billableHours)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatCurrency(row.revenue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
   } else {
     byClient = (
       <div className="pt-4">
-        <table className="w-full border-collapse border border-border text-sm">
-          <thead>
-            <tr className="bg-muted">
-              <th className="border border-border px-2 py-1 text-left">
-                <Link href={clientSortHref("client")}>
-                  Client{clientSortIndicator("client")}
-                </Link>
-              </th>
-              <th className="border border-border px-2 py-1 text-right">
-                <Link href={clientSortHref("hours")}>
-                  Total hours{clientSortIndicator("hours")}
-                </Link>
-              </th>
-              <th className="border border-border px-2 py-1 text-right">
-                <Link href={clientSortHref("billable")}>
-                  % Billable{clientSortIndicator("billable")}
-                </Link>
-              </th>
-              <th className="border border-border px-2 py-1 text-right">Tracked Revenue (potential)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedClients.map((row) => {
-              const total = Number(row.totalHours);
-              const pct = total > 0 ? (Number(row.billableHours) / total) * 100 : 0;
-              const href = row.clientId
-                ? `/dashboard/productividad?scope=${scope}&period=${period.value}&tab=by-client&client=${row.clientId}`
-                : null;
-              return (
-                <tr key={row.clientId ?? "no-client"} className="hover:bg-muted">
-                  <td className="border border-border p-0">
-                    {href ? (
-                      <Link href={href} className="block px-2 py-1">
-                        {row.clientName ?? "No client"}
-                      </Link>
-                    ) : (
-                      <span className="block px-2 py-1">No client</span>
-                    )}
-                  </td>
-                  <td className="border border-border p-0 text-right">
-                    {href ? (
-                      <Link href={href} className="block px-2 py-1">
-                        {formatHours(row.totalHours)}
-                      </Link>
-                    ) : (
-                      <span className="block px-2 py-1">
-                        {formatHours(row.totalHours)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="border border-border p-0 text-right">
-                    {href ? (
-                      <Link href={href} className="block px-2 py-1">
-                        {formatPercent(pct)}
-                      </Link>
-                    ) : (
-                      <span className="block px-2 py-1">{formatPercent(pct)}</span>
-                    )}
-                  </td>
-                  <td className="border border-border p-0 text-right">
-                    {href ? (
-                      <Link href={href} className="block px-2 py-1">
-                        {formatCurrency(row.revenue)}
-                      </Link>
-                    ) : (
-                      <span className="block px-2 py-1">
-                        {formatCurrency(row.revenue)}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">
+                  <Link href={clientSortHref("client")}>
+                    Client{clientSortIndicator("client")}
+                  </Link>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">
+                  <Link href={clientSortHref("hours")}>
+                    Total hours{clientSortIndicator("hours")}
+                  </Link>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">
+                  <Link href={clientSortHref("billable")}>
+                    % Billable{clientSortIndicator("billable")}
+                  </Link>
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">Tracked Revenue (potential)</th>
+              </tr>
+            </thead>
+            <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+              {sortedClients.map((row) => {
+                const total = Number(row.totalHours);
+                const pct = total > 0 ? (Number(row.billableHours) / total) * 100 : 0;
+                const href = row.clientId
+                  ? `/dashboard/productividad?scope=${scope}&period=${period.value}&tab=by-client&client=${row.clientId}`
+                  : null;
+                return (
+                  <tr key={row.clientId ?? "no-client"} className="hover:bg-muted/60">
+                    <td className="p-0">
+                      {href ? (
+                        <Link href={href} className="block px-3 py-2">
+                          {row.clientName ?? "No client"}
+                        </Link>
+                      ) : (
+                        <span className="block px-3 py-2">No client</span>
+                      )}
+                    </td>
+                    <td className="p-0 text-right tabular-nums">
+                      {href ? (
+                        <Link href={href} className="block px-3 py-2">
+                          {formatHours(row.totalHours)}
+                        </Link>
+                      ) : (
+                        <span className="block px-3 py-2">
+                          {formatHours(row.totalHours)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-0 text-right">
+                      {href ? (
+                        <Link href={href} className="flex justify-end px-3 py-2">
+                          <PercentBadge value={pct} label={formatPercent(pct)} />
+                        </Link>
+                      ) : (
+                        <span className="flex justify-end px-3 py-2">
+                          <PercentBadge value={pct} label={formatPercent(pct)} />
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-0 text-right tabular-nums">
+                      {href ? (
+                        <Link href={href} className="block px-3 py-2">
+                          {formatCurrency(row.revenue)}
+                        </Link>
+                      ) : (
+                        <span className="block px-3 py-2">
+                          {formatCurrency(row.revenue)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -743,34 +752,30 @@ export default async function ProductividadPage({
         Hours (last 50 records)
       </h1>
 
-      <table className="w-full border-collapse border border-border text-sm">
-        <thead>
-          <tr className="bg-muted">
-            <th className="border border-border px-2 py-1 text-left">Employee</th>
-            <th className="border border-border px-2 py-1 text-left">Client</th>
-            <th className="border border-border px-2 py-1 text-left">Date</th>
-            <th className="border border-border px-2 py-1 text-left">Hours</th>
-            <th className="border border-border px-2 py-1 text-left">Billable</th>
-          </tr>
-        </thead>
-        <tbody>
-          {allRecordsRows.map((row, i) => (
-            <tr key={i}>
-              <td className="border border-border px-2 py-1">
-                {row.employeeName ?? "—"}
-              </td>
-              <td className="border border-border px-2 py-1">
-                {row.clientName ?? "—"}
-              </td>
-              <td className="border border-border px-2 py-1">{row.date}</td>
-              <td className="border border-border px-2 py-1">{row.hours}</td>
-              <td className="border border-border px-2 py-1">
-                {row.billable ? "Yes" : "No"}
-              </td>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-muted">
+              <th className="border-b border-border px-2 py-1 text-left">Employee</th>
+              <th className="border-b border-border px-2 py-1 text-left">Client</th>
+              <th className="border-b border-border px-2 py-1 text-left">Date</th>
+              <th className="border-b border-border px-2 py-1 text-left">Hours</th>
+              <th className="border-b border-border px-2 py-1 text-left">Billable</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {allRecordsRows.map((row, i) => (
+              <tr key={i}>
+                <td className="px-2 py-1">{row.employeeName ?? "—"}</td>
+                <td className="px-2 py-1">{row.clientName ?? "—"}</td>
+                <td className="px-2 py-1">{row.date}</td>
+                <td className="px-2 py-1">{row.hours}</td>
+                <td className="px-2 py-1">{row.billable ? "Yes" : "No"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 

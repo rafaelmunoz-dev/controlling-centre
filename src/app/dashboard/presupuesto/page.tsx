@@ -102,56 +102,58 @@ export default async function PresupuestoPage({
         <h2 className="mb-2 text-lg font-semibold text-foreground">
           Already loaded
         </h2>
-        <table className="w-full border-collapse border border-border text-sm">
-          <thead>
-            <tr className="bg-muted">
-              <th className="border border-border px-2 py-1 text-left">
-                Entity
-              </th>
-              <th className="border border-border px-2 py-1 text-left">
-                Month
-              </th>
-              <th className="border border-border px-2 py-1 text-left">
-                Line
-              </th>
-              <th className="border border-border px-2 py-1 text-right">
-                Amount
-              </th>
-              <th className="border border-border px-2 py-1 text-left">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {existing.map((row) => (
-              <tr key={row.id}>
-                <td className="border border-border px-2 py-1">
-                  {row.entityName ?? "—"}
-                </td>
-                <td className="border border-border px-2 py-1">
-                  {row.month}
-                </td>
-                <td className="border border-border px-2 py-1">
-                  {PL_LINE_LABELS[row.plLine] ?? row.plLine}
-                </td>
-                <td className="border border-border px-2 py-1 text-right">
-                  {formatAmount(row.amount)}
-                </td>
-                <td className="border border-border px-2 py-1">
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/dashboard/presupuesto?scope=${scope}&edit=${row.entityId}:${row.month.slice(0, 7)}`}
-                      className="text-sm text-primary underline"
-                    >
-                      Edit
-                    </Link>
-                    <DeleteBudgetForm id={row.id} action={deleteBudget} />
-                  </div>
-                </td>
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">
+                  Entity
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">
+                  Month
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">
+                  Line
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-normal text-muted-foreground">
+                  Amount
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-muted-foreground">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="[&>tr:nth-child(even)]:bg-muted/30">
+              {existing.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-3 py-2">
+                    {row.entityName ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {row.month}
+                  </td>
+                  <td className="px-3 py-2">
+                    {PL_LINE_LABELS[row.plLine] ?? row.plLine}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatAmount(row.amount)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/presupuesto?scope=${scope}&edit=${row.entityId}:${row.month.slice(0, 7)}`}
+                        className="text-sm text-primary underline"
+                      >
+                        Edit
+                      </Link>
+                      <DeleteBudgetForm id={row.id} action={deleteBudget} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

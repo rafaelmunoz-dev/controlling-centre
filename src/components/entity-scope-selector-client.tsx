@@ -29,8 +29,12 @@ export function EntityScopeSelectorClient({
 
   return (
     <Select value={currentScope} onValueChange={handleChange}>
-      <SelectTrigger className="w-64">
-        <SelectValue placeholder="Select entity">
+      <SelectTrigger className="max-w-36 sm:max-w-56">
+        <SelectValue
+          placeholder="Select entity"
+          className="min-w-0 truncate"
+          style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
           {(value: string | null) =>
             options.find((option) => option.value === value)?.label ??
             "Select entity"

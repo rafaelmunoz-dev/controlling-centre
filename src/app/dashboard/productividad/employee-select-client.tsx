@@ -29,7 +29,7 @@ export function EmployeeSelectClient({
 
   return (
     <Select value={currentEmployeeId ?? ""} onValueChange={handleChange}>
-      <SelectTrigger className="w-64">
+      <SelectTrigger className="w-full sm:w-64">
         <SelectValue placeholder="Select employee">
           {(value: string | null) =>
             employees.find((employee) => employee.id === value)?.name ??
